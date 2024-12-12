@@ -2,19 +2,18 @@
 pragma solidity ^0.8.26;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {ERC20Burnable} from "../lib/openzeppelin-contracts/contracts/token/ERC20/extensions/ERC20Burnable.sol";
-import {Ownable} from "../lib/openzeppelin-contracts/contracts/access/Ownable.sol";
+import {ERC20Burnable} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
-/*
- * @title DecentralizedStableCoin
+/**
+ * @title DeFiStableCoin
  * @author Jeremiah A.
  * Collateral: Exogenous
  * Minting (Stability Mechanism): Decentralized (Algorithmic)
  * Value (Relative Stability): Anchored (Pegged to USD)
  * Collateral Type: Crypto
- *
-* This is the contract meant to be owned by DSCEngine. It is a ERC20 token that can be minted and burned by the
-DSCEngine smart contract.
+ * This is the contract meant to be owned by DSCEngine. It is a ERC20 token that can be minted and burned by the
+ * DSCEngine smart contract.
  */
 contract DecentralizedStableCoin is ERC20Burnable, Ownable {
     error DecentralizedStableCoin__AmountMustBeMoreThanZero();
@@ -27,7 +26,6 @@ contract DecentralizedStableCoin is ERC20Burnable, Ownable {
     For example:
     constructor() ERC20("DecentralizedStableCoin", "DSC") Ownable(0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266) {}
     Related code changes can be viewed in this commit:
-    https://github.com/OpenZeppelin/openzeppelin-contracts/commit/13d5e0466a9855e9305119ed383e54fc913fdc60
     */
     constructor() ERC20("DecentralizedStableCoin", "DSC") Ownable(msg.sender) {}
 
@@ -42,10 +40,7 @@ contract DecentralizedStableCoin is ERC20Burnable, Ownable {
         super.burn(_amount);
     }
 
-    function mint(
-        address _to,
-        uint256 _amount
-    ) external onlyOwner returns (bool) {
+    function mint(address _to, uint256 _amount) external onlyOwner returns (bool) {
         if (_to == address(0)) {
             revert DecentralizedStableCoin__NotZeroAddress();
         }
