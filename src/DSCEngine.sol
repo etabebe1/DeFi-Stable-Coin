@@ -33,11 +33,16 @@ contract DSCEngine is ReentrancyGuard {
     error DSCEngine__depositCollateralFailed();
     error DSCEngine__valueShouldBeGreaterThanZero();
     error DSCEngine__tokenAddressAndPriceFeedAddressesLengthUnmatched();
+    error DSCEngine__healthFactorIsBelowRequired();
 
     /// state variables ///
     DeFiStableCoin private immutable i_dsc;
+
     uint256 private constant ADDITIONAL_FEED_PRECISION = 1e18;
     uint256 private constant PRECISION = 1e18;
+    uint256 private constant LIQUIDATION_THRESHOLD = 50;
+    uint256 private constant LIQUIDATION_PRECISION = 100;
+    uint256 private constant MIN_HEALTH_FACTOR = 1;
 
     /// @dev Mapping collateral token to priceFeed address
     mapping(address collateralToken => address priceFeed) private s_collateralTokenToPriceFeed;
@@ -120,7 +125,11 @@ contract DSCEngine is ReentrancyGuard {
     function mintDsc(uint256 _amount) external shouldBeGreaterThanZero(_amount) nonReentrant {
         s_userToDSCAmountMinted[msg.sender] += _amount;
 
-        //check if user minted more DSCToken than collateral
+        /**
+         * @dev if user tries to mint more DSCToken than collateral they have, revert with DSCEngine__healthFactorIsBelowRequired
+         * @notice the reason is that, the health factor should be above MIN_HEALTH_FACTOR
+         * @notice this helps user to not be liquidated early
+         */
         _revertIfHealthFactorIsBroken(msg.sender);
     }
 
@@ -137,16 +146,27 @@ contract DSCEngine is ReentrancyGuard {
         view
         returns (uint256 totalDSCMinted, uint256 collateralValueInUSD)
     {
-        totalDSCMinted = s_DSCMinted[_user];
-        collateralValueInUSD = getAccountCollateralValue(_user);
+        totalDSCMinted = s_userToDSCAmountMinted[_user];
+        collateralValueInUSD = getAccountCollateralAmount(_user);
     }
 
     /**
      * Returns how close to liquidation a user is
      * If a user Hf goes bellow 1 user would be liquidated
      */
-    function _healthFactor(address user) internal returns (uint256) {
+    function _healthFactor(address user) internal view returns (uint256) {
         (uint256 totalDSCMinted, uint256 collateralValueInUSD) = _getAccountInfo(user);
+        return _calculateHealthFactor(totalDSCMinted, collateralValueInUSD);
+    }
+
+    function _calculateHealthFactor(uint256 totalDSCMinted, uint256 collateralThreshold)
+        internal
+        pure
+        returns (uint256)
+    {
+        uint256 collateralThresholdLevel = (collateralThreshold * LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION;
+
+        return ((collateralThresholdLevel * PRECISION) / totalDSCMinted);
     }
 
     /**
@@ -154,7 +174,13 @@ contract DSCEngine is ReentrancyGuard {
      * Checks health factor (if user have enough collateral)
      * If not it reverts
      */
-    function _revertIfHealthFactorIsBroken(address user) internal view {}
+    function _revertIfHealthFactorIsBroken(address user) internal view {
+        uint256 userHealthFactor = _healthFactor(user);
+
+        if (userHealthFactor < MIN_HEALTH_FACTOR) {
+            revert DSCEngine__healthFactorIsBelowRequired();
+        }
+    }
 
     /// Public and External vew || pure functions ///
 
@@ -176,6 +202,6 @@ contract DSCEngine is ReentrancyGuard {
 
         (, int256 price,,,) = priceFeed.latestRoundData();
 
-        return (uint256((price) * ADDITIONAL_FEED_PRECISION) * amount) / PRECISION;
+        return ((uint256(price) * ADDITIONAL_FEED_PRECISION) * amount) / PRECISION;
     }
 }
