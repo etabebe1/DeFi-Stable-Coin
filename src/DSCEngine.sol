@@ -29,24 +29,27 @@ import {AggregatorV3Interface} from
 
 contract DSCEngine is ReentrancyGuard {
     /// errors ///
-    error DSCEngine__valueShouldBeGreaterThanZero();
-    error DSCEngine__tokenAddressAndPriceFeedAddressesLengthUnmatched();
     error DSCEngine__tokenNotAllowed();
     error DSCEngine__depositCollateralFailed();
+    error DSCEngine__valueShouldBeGreaterThanZero();
+    error DSCEngine__tokenAddressAndPriceFeedAddressesLengthUnmatched();
 
     /// state variables ///
     DeFiStableCoin private immutable i_dsc;
+    uint256 private constant ADDITIONAL_FEED_PRECISION = 1e18;
+    uint256 private constant PRECISION = 1e18;
 
     /// @dev Mapping collateral token to priceFeed address
     mapping(address collateralToken => address priceFeed) private s_collateralTokenToPriceFeed;
     /// @dev Amount of collateral deposited by user
-    //      |--CollateralTokenAddress(wEth, wBTC)
-    // user-|
-    //      |--Amount of collateral
+    ///        ||==> CollateralTokenAddress(wETH, wBTC) ==>||
+    /// user==>||                                          ||
+    ///                                                    ||
+    ///        ||==> Amount of collateral <================||
     mapping(address user => mapping(address collateralToken => uint256 amount)) private s_collateralDeposited;
 
     /// @dev Mapping user address to amount of DSC they minted/created
-    mapping(address user => uint256 amount) private s_DSCMinted;
+    mapping(address user => uint256 DSCAmount) private s_userToDSCAmountMinted;
     /// @dev If we know exactly how many tokens we have, we could make this immutable!
     address[] private s_collateralTokens;
 
@@ -81,6 +84,7 @@ contract DSCEngine is ReentrancyGuard {
 
         for (uint256 i = 0; i < collateralTokenAddresses.length; i++) {
             s_collateralTokenToPriceFeed[collateralTokenAddresses[i]] = priceFeedAddresses[i];
+            s_collateralTokens.push(collateralTokenAddresses[i]);
         }
 
         i_dsc = DeFiStableCoin(_dsc);
@@ -113,7 +117,12 @@ contract DSCEngine is ReentrancyGuard {
 
     function redeemCollateral() external {}
 
-    function mintDsc() external {}
+    function mintDsc(uint256 _amount) external shouldBeGreaterThanZero(_amount) nonReentrant {
+        s_userToDSCAmountMinted[msg.sender] += _amount;
+
+        //check if user minted more DSCToken than collateral
+        _revertIfHealthFactorIsBroken(msg.sender);
+    }
 
     function burnDsc() external {}
 
@@ -147,20 +156,26 @@ contract DSCEngine is ReentrancyGuard {
      */
     function _revertIfHealthFactorIsBroken(address user) internal view {}
 
-    /// Public and External vew functions ///
+    /// Public and External vew || pure functions ///
 
     /**
      * @dev loop through each collateral token, get the amount they have deposited, and map it to
      * the price, to get the USD value
      */
-    function getAccountCollateralValue(address user) public view returns (uint256 totalCollateralValueInUSD) {
+    function getAccountCollateralAmount(address user) public view returns (uint256 totalCollateralValueInUSD) {
         for (uint256 i = 0; i < s_collateralTokens.length; i++) {
-            address token = s_collateralTokens[i];
-            uint256 amount = s_collateralDeposited[user][token];
-            totalCollateralValueInUSD += getUSDValue(token, amount);
+            address collateralToken = s_collateralTokens[i];
+            uint256 amount = s_collateralDeposited[user][collateralToken];
+            totalCollateralValueInUSD += getUSDValue(collateralToken, amount);
         }
         return totalCollateralValueInUSD;
     }
 
-    function getUSDValue(address token, uint256 amount) public view returns (uint256) {}
+    function getUSDValue(address collateralToken, uint256 amount) public view returns (uint256) {
+        AggregatorV3Interface priceFeed = AggregatorV3Interface(s_collateralTokenToPriceFeed[collateralToken]);
+
+        (, int256 price,,,) = priceFeed.latestRoundData();
+
+        return (uint256((price) * ADDITIONAL_FEED_PRECISION) * amount) / PRECISION;
+    }
 }
