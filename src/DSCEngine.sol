@@ -226,7 +226,8 @@ contract DSCEngine is ReentrancyGuard {
         AggregatorV3Interface priceFeed = AggregatorV3Interface(s_collateralTokenToPriceFeed[collateralToken]);
 
         (, int256 price,,,) = priceFeed.latestRoundData();
-
+        // 1ETH == 3694
+        // But returned value is 3920 * 1e8
         return ((uint256(price) * ADDITIONAL_FEED_PRECISION) * amount) / PRECISION;
     }
 }
