@@ -45,7 +45,7 @@ contract DSCEngine is ReentrancyGuard {
     uint256 private constant MIN_HEALTH_FACTOR = 1;
 
     /// @dev Mapping collateral token to priceFeed address
-    mapping(address collateralToken => address priceFeed) private s_collateralTokenToPriceFeed;
+    mapping(address collateralTokenAddress => address priceFeedAddress) private s_collateralTokenToPriceFeed;
     /// @dev Amount of collateral deposited by user
     ///        ||==> CollateralTokenAddress(wETH, wBTC) ==>||
     /// user==>||                                          ||
@@ -141,13 +141,42 @@ contract DSCEngine is ReentrancyGuard {
 
     /// Private and Internal vew functions ///
 
-    function _getAccountInfo(address _user)
-        private
-        view
-        returns (uint256 totalDSCMinted, uint256 collateralValueInUSD)
-    {
-        totalDSCMinted = s_userToDSCAmountMinted[_user];
-        collateralValueInUSD = getAccountCollateralAmount(_user);
+    /**
+     * @notice function bellow following CEI
+     * Checks health factor (if user have enough collateral)
+     * If not it reverts
+     * @dev the commented function bellow serves the same purpose
+     * it's just not broken down in to pieces
+     */
+
+    // function _revertIfHealthFactorIsBroken(address user) internal view {
+    //     uint256 collateralValueInUSD;
+    //     uint256 totalDSCMinted = s_userToDSCAmountMinted[user];
+
+    //     for (uint256 i = 0; i < s_collateralTokens.length; i++) {
+    //         address collateralToken = s_collateralTokens[i];
+    //         uint256 collateralAmount = s_collateralDeposited[user][collateralToken];
+
+    //         AggregatorV3Interface priceFeed = AggregatorV3Interface(s_collateralTokenToPriceFeed[collateralToken]);
+
+    //         (, int256 price,,,) = priceFeed.latestRoundData();
+
+    //         collateralValueInUSD += ((uint256(price) * ADDITIONAL_FEED_PRECISION) * collateralAmount) / PRECISION;
+    //     }
+
+    //     uint256 userHealthFactor = _calculateHealthFactor(totalDSCMinted, collateralValueInUSD);
+
+    //     if (userHealthFactor < MIN_HEALTH_FACTOR) {
+    //         revert DSCEngine__healthFactorIsBelowRequired();
+    //     }
+    // }
+
+    function _revertIfHealthFactorIsBroken(address user) internal view {
+        uint256 userHealthFactor = _healthFactor(user);
+
+        if (userHealthFactor < MIN_HEALTH_FACTOR) {
+            revert DSCEngine__healthFactorIsBelowRequired();
+        }
     }
 
     /**
@@ -157,6 +186,15 @@ contract DSCEngine is ReentrancyGuard {
     function _healthFactor(address user) internal view returns (uint256) {
         (uint256 totalDSCMinted, uint256 collateralValueInUSD) = _getAccountInfo(user);
         return _calculateHealthFactor(totalDSCMinted, collateralValueInUSD);
+    }
+
+    function _getAccountInfo(address user)
+        private
+        view
+        returns (uint256 totalDSCMinted, uint256 collateralValueInUSD)
+    {
+        totalDSCMinted = s_userToDSCAmountMinted[user];
+        collateralValueInUSD = getAccountCollateralAmount(user);
     }
 
     function _calculateHealthFactor(uint256 totalDSCMinted, uint256 collateralThreshold)
@@ -169,19 +207,6 @@ contract DSCEngine is ReentrancyGuard {
         return ((collateralThresholdLevel * PRECISION) / totalDSCMinted);
     }
 
-    /**
-     * @notice function bellow following CEI
-     * Checks health factor (if user have enough collateral)
-     * If not it reverts
-     */
-    function _revertIfHealthFactorIsBroken(address user) internal view {
-        uint256 userHealthFactor = _healthFactor(user);
-
-        if (userHealthFactor < MIN_HEALTH_FACTOR) {
-            revert DSCEngine__healthFactorIsBelowRequired();
-        }
-    }
-
     /// Public and External vew || pure functions ///
 
     /**
@@ -191,8 +216,8 @@ contract DSCEngine is ReentrancyGuard {
     function getAccountCollateralAmount(address user) public view returns (uint256 totalCollateralValueInUSD) {
         for (uint256 i = 0; i < s_collateralTokens.length; i++) {
             address collateralToken = s_collateralTokens[i];
-            uint256 amount = s_collateralDeposited[user][collateralToken];
-            totalCollateralValueInUSD += getUSDValue(collateralToken, amount);
+            uint256 collateralAmount = s_collateralDeposited[user][collateralToken];
+            totalCollateralValueInUSD += getUSDValue(collateralToken, collateralAmount);
         }
         return totalCollateralValueInUSD;
     }
