@@ -13,7 +13,7 @@ contract DeployDSC is Script {
     function run() external returns (DeFiStableCoin, DSCEngine) {
         HelperConfig helperConfig = new HelperConfig();
 
-        (address wBTC_USDPriceFeed, address wETH_USDPriceFeed, address wBTC, address wETH, uint256 deployKey) =
+        (address wBTC_USDPriceFeed, address wETH_USDPriceFeed, address wBTC, address wETH,) =
             helperConfig.activeNetworkConfig();
 
         collateralTokenAddresses = [wBTC_USDPriceFeed, wETH_USDPriceFeed];
