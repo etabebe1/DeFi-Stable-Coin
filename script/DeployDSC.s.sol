@@ -21,8 +21,11 @@ contract DeployDSC is Script {
 
         vm.startBroadcast();
         DeFiStableCoin dsc = new DeFiStableCoin();
-        address dscAddress = address(dsc);
-        // DSCEngine dscEngin = new DSCEngine(dscAddress);
+        DSCEngine dscEngine = new DSCEngine(collateralTokenAddresses, priceFeedTokenAddresses, address(dsc));
+
+        dsc.transferOwnership(address(dsc));
         vm.stopBroadcast();
+
+        return (dsc, dscEngine);
     }
 }
