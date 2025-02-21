@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: SEE LICENSE IN LICENSE
 pragma solidity ^0.8.26;
 
-import {Script} from "forge-std/Script.sol";
+import {Script, console} from "forge-std/Script.sol";
 import {MockV3Aggregator} from "../test/mocks/MockV3Aggregator.sol";
 import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
 
 abstract contract HelperConfigConstants {
-    uint256 ETH_MAINNET_CHAIN_ID = 1;
     uint256 ETH_SEPOLIA_CHAIN_ID = 11155111;
     uint256 ETH_ANVIL_CHAIN_ID = 31337;
 
@@ -60,13 +59,15 @@ contract HelperConfig is Script, HelperConfigConstants {
     function _setActiveNetworkConfig() internal returns (NetworkConfig memory) {
         uint256 currentChainId = block.chainid;
 
-        if (chainIdToNetworkConfig[currentChainId].wBTC_USDPriceFeed != address(0)) {
+        if (currentChainId == ETH_ANVIL_CHAIN_ID) {
+            activeNetworkConfig = _handleAnvilChain();
+        } else if (chainIdToNetworkConfig[currentChainId].wBTC_USDPriceFeed != address(0)) {
             activeNetworkConfig = chainIdToNetworkConfig[currentChainId];
-
-            return activeNetworkConfig;
         } else {
             revert HelperConfig__InvalidChainId();
         }
+
+        return activeNetworkConfig;
     }
 
     function _handleAnvilChain() internal returns (NetworkConfig memory) {
@@ -78,13 +79,17 @@ contract HelperConfig is Script, HelperConfigConstants {
         ERC20Mock wBTCMock = new ERC20Mock();
         vm.stopBroadcast();
 
-        return NetworkConfig({
+        NetworkConfig memory anvilConfig = NetworkConfig({
             wBTC_USDPriceFeed: address(btcMockV3Aggregator),
             wETH_USDPriceFeed: address(ethMockV3Aggregator),
             wBTC: address(wBTCMock),
             wETH: address(wETHMock),
             deployKey: DEFAULT_ANVIL_PRIVATE_KEY
         });
+
+        // Update the mapping for Anvil chain ID
+        anvilConfig = chainIdToNetworkConfig[ETH_ANVIL_CHAIN_ID];
+        return anvilConfig;
     }
 
     function getActiveNetworkConfig() external view returns (NetworkConfig memory) {

@@ -10,7 +10,7 @@ contract DeployDSC is Script {
     address[] collateralTokenAddresses;
     address[] priceFeedTokenAddresses;
 
-    function run() external returns (DeFiStableCoin, DSCEngine) {
+    function run() external returns (DeFiStableCoin, DSCEngine, HelperConfig) {
         HelperConfig helperConfig = new HelperConfig();
 
         (address wBTC_USDPriceFeed, address wETH_USDPriceFeed, address wBTC, address wETH,) =
@@ -26,6 +26,6 @@ contract DeployDSC is Script {
         dsc.transferOwnership(address(dsc));
         vm.stopBroadcast();
 
-        return (dsc, dscEngine);
+        return (dsc, dscEngine, helperConfig);
     }
 }

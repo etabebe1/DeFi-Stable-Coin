@@ -26,6 +26,7 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {AggregatorV3Interface} from
     "../lib/chainlink-brownie-contracts/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
+import {console} from "forge-std/console.sol";
 
 contract DSCEngine is ReentrancyGuard {
     /// errors ///
@@ -226,6 +227,8 @@ contract DSCEngine is ReentrancyGuard {
         AggregatorV3Interface priceFeed = AggregatorV3Interface(s_collateralTokenToPriceFeed[collateralToken]);
 
         (, int256 price,,,) = priceFeed.latestRoundData();
+        console.log(price);
+
         // 1ETH == 3694
         // But returned value is 3920 * 1e8
         return ((uint256(price) * ADDITIONAL_FEED_PRECISION) * amount) / PRECISION;
