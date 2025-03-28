@@ -10,10 +10,11 @@ contract DeployDSC is Script {
     address[] collateralTokenAddresses;
     address[] priceFeedTokenAddresses;
 
-    function run() external returns (DSCEngine, DeFiStableCoin, HelperConfig) {
-        HelperConfig helperConfig = new HelperConfig();
+    function run() external view returns (bool) {
+        // HelperConfig helperConfig = new HelperConfig();
 
         console.log("Run deploy script");
+        return true;
     }
 }
 
