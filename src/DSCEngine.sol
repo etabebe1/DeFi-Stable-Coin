@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: SEE LICENSE IN LICENSE
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.24;
 
 /**
  * @title DSCEngine || DeFiStableCoinEngine
@@ -47,6 +47,7 @@ contract DSCEngine is ReentrancyGuard {
 
     /// @dev Mapping collateral token to priceFeed address
     mapping(address collateralTokenAddress => address priceFeedAddress) private s_collateralTokenToPriceFeed;
+
     /// @dev Amount of collateral deposited by user
     ///        ||==> CollateralTokenAddress(wETH, wBTC) ==>||
     /// user==>||                                          ||
@@ -149,28 +150,27 @@ contract DSCEngine is ReentrancyGuard {
      * @dev the commented function bellow serves the same purpose
      * it's just not broken down in to pieces
      */
+    function __revertIfHealthFactorIsBroken(address user) internal view {
+        uint256 collateralValueInUSD;
+        uint256 totalDSCMinted = s_userToDSCAmountMinted[user];
 
-    // function _revertIfHealthFactorIsBroken(address user) internal view {
-    //     uint256 collateralValueInUSD;
-    //     uint256 totalDSCMinted = s_userToDSCAmountMinted[user];
+        for (uint256 i = 0; i < s_collateralTokens.length; i++) {
+            address collateralToken = s_collateralTokens[i];
+            uint256 collateralAmount = s_collateralDeposited[user][collateralToken];
 
-    //     for (uint256 i = 0; i < s_collateralTokens.length; i++) {
-    //         address collateralToken = s_collateralTokens[i];
-    //         uint256 collateralAmount = s_collateralDeposited[user][collateralToken];
+            AggregatorV3Interface priceFeed = AggregatorV3Interface(s_collateralTokenToPriceFeed[collateralToken]);
 
-    //         AggregatorV3Interface priceFeed = AggregatorV3Interface(s_collateralTokenToPriceFeed[collateralToken]);
+            (, int256 price,,,) = priceFeed.latestRoundData();
 
-    //         (, int256 price,,,) = priceFeed.latestRoundData();
+            collateralValueInUSD += ((uint256(price) * ADDITIONAL_FEED_PRECISION) * collateralAmount) / PRECISION;
+        }
 
-    //         collateralValueInUSD += ((uint256(price) * ADDITIONAL_FEED_PRECISION) * collateralAmount) / PRECISION;
-    //     }
+        uint256 userHealthFactor = _calculateHealthFactor(totalDSCMinted, collateralValueInUSD);
 
-    //     uint256 userHealthFactor = _calculateHealthFactor(totalDSCMinted, collateralValueInUSD);
-
-    //     if (userHealthFactor < MIN_HEALTH_FACTOR) {
-    //         revert DSCEngine__healthFactorIsBelowRequired();
-    //     }
-    // }
+        if (userHealthFactor < MIN_HEALTH_FACTOR) {
+            revert DSCEngine__healthFactorIsBelowRequired();
+        }
+    }
 
     function _revertIfHealthFactorIsBroken(address user) internal view {
         uint256 userHealthFactor = _healthFactor(user);
@@ -198,12 +198,12 @@ contract DSCEngine is ReentrancyGuard {
         collateralValueInUSD = getAccountCollateralAmount(user);
     }
 
-    function _calculateHealthFactor(uint256 totalDSCMinted, uint256 collateralThreshold)
+    function _calculateHealthFactor(uint256 totalDSCMinted, uint256 collateralValueInUSD)
         internal
         pure
         returns (uint256)
     {
-        uint256 collateralThresholdLevel = (collateralThreshold * LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION;
+        uint256 collateralThresholdLevel = (collateralValueInUSD * LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION;
 
         return ((collateralThresholdLevel * PRECISION) / totalDSCMinted);
     }

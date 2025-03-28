@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: SEE LICENSE IN LICENSE
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.24;
 
 import {Script, console} from "forge-std/Script.sol";
 import {MockV3Aggregator} from "../test/mocks/MockV3Aggregator.sol";
@@ -12,12 +12,11 @@ abstract contract HelperConfigConstants {
     uint8 public constant DECIMALS = 8;
     int256 public constant ETH_USD_PRICE = 2000e8;
     int256 public constant BTC_USD_PRICE = 1000e8;
-    uint256 public constant DEFAULT_ANVIL_PRIVATE_KEY =
-        0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80;
+    uint256 public constant DEFAULT_ANVIL_PRIVATE_KEY = 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d;
 }
 
 contract HelperConfig is Script, HelperConfigConstants {
-    error HelperConfig__InvalidChainId();
+    error HelperConfig_InvalidChainId();
 
     struct NetworkConfig {
         address wBTC_USDPriceFeed;
@@ -32,12 +31,12 @@ contract HelperConfig is Script, HelperConfigConstants {
 
     constructor() {
         _initializeHelperConfig();
-        _handleAnvilChain();
-        _setActiveNetworkConfig();
+        _handleAnvilChian();
+        _setActiveNetwork();
     }
 
     function _initializeHelperConfig() internal {
-        // Sepolia Configuration
+        // Sepolia network config
         chainIdToNetworkConfig[ETH_SEPOLIA_CHAIN_ID] = NetworkConfig({
             wBTC_USDPriceFeed: 0x1b44F3514812d835EB1BDB0acB33d3fA3351Ee43,
             wETH_USDPriceFeed: 0x694AA1769357215DE4FAC081bf1f309aDC325306,
@@ -56,21 +55,7 @@ contract HelperConfig is Script, HelperConfigConstants {
         });
     }
 
-    function _setActiveNetworkConfig() internal returns (NetworkConfig memory) {
-        uint256 currentChainId = block.chainid;
-
-        if (currentChainId == ETH_ANVIL_CHAIN_ID) {
-            activeNetworkConfig = _handleAnvilChain();
-        } else if (chainIdToNetworkConfig[currentChainId].wBTC_USDPriceFeed != address(0)) {
-            activeNetworkConfig = chainIdToNetworkConfig[currentChainId];
-        } else {
-            revert HelperConfig__InvalidChainId();
-        }
-
-        return activeNetworkConfig;
-    }
-
-    function _handleAnvilChain() internal returns (NetworkConfig memory) {
+    function _handleAnvilChian() internal returns (NetworkConfig memory) {
         vm.startBroadcast();
         MockV3Aggregator ethMockV3Aggregator = new MockV3Aggregator(DECIMALS, ETH_USD_PRICE);
         ERC20Mock wETHMock = new ERC20Mock();
@@ -92,7 +77,17 @@ contract HelperConfig is Script, HelperConfigConstants {
         return anvilConfig;
     }
 
-    function getActiveNetworkConfig() external view returns (NetworkConfig memory) {
+    function _setActiveNetwork() internal returns (NetworkConfig memory) {
+        uint256 currentChainId = block.chainid;
+
+        if (currentChainId == ETH_ANVIL_CHAIN_ID) {
+            activeNetworkConfig = _handleAnvilChian();
+        } else if (chainIdToNetworkConfig[currentChainId].wBTC_USDPriceFeed != address(0)) {
+            activeNetworkConfig = chainIdToNetworkConfig[currentChainId];
+        } else {
+            revert HelperConfig_InvalidChainId();
+        }
+
         return activeNetworkConfig;
     }
 }

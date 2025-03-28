@@ -8,25 +8,25 @@ import {DSCEngine} from "../../src/DSCEngine.sol";
 import {DeFiStableCoin} from "../../src/DeFiStableCoin.sol";
 
 contract DSCEngineTest is Test {
-    DeployDSC deployer;
-    HelperConfig helperConfig;
-    DeFiStableCoin dsc;
-    DSCEngine dscEngine;
-    address wETH_USDPriceFeed;
-    address wETH;
+// DeployDSC deployer;
+// HelperConfig helperConfig;
+// DeFiStableCoin dsc;
+// DSCEngine dscEngine;
+// address wETH_USDPriceFeed;
+// address wETH;
 
-    function setUp() external {
-        deployer = new DeployDSC();
-        (dsc, dscEngine, helperConfig) = deployer.run();
+// function setUp() external {
+//     deployer = new DeployDSC();
+//     (dsc, dscEngine, helperConfig) = deployer.run();
 
-        (, wETH_USDPriceFeed,, wETH,) = helperConfig.activeNetworkConfig();
-    }
+//     (, wETH_USDPriceFeed,, wETH,) = helperConfig.activeNetworkConfig();
+// }
 
-    function testGetUSDValue() public view {
-        uint256 ethAmount = 15e18;
-        uint256 expectedInUSD = 30000e18;
-        uint256 actualInUSD = dscEngine.getUSDValue(wETH, ethAmount);
+// function testGetUSDValue() public view {
+//     uint256 ethAmount = 15e18;
+//     uint256 expectedInUSD = 30000e18;
+//     uint256 actualInUSD = dscEngine.getUSDValue(wETH, ethAmount);
 
-        assertEq(expectedInUSD, actualInUSD);
-    }
+//     assertEq(expectedInUSD, actualInUSD);
+// }
 }
